@@ -9,7 +9,6 @@ export default function Scanner() {
   const cooldownRef = useRef(false);
 
   const [isRunning, setIsRunning] = useState(false);
-  const [count, setCount] = useState(null);
   const [status, setStatus] = useState("idle");
   const [cameraError, setCameraError] = useState(null);
 
@@ -30,34 +29,27 @@ export default function Scanner() {
     }
   };
 
-  // 🛑 Stop camera
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    setIsRunning(false);
-  };
-
   useEffect(() => {
     startCamera();
-    return () => stopCamera();
+    return () => {
+      // stop camera on unmount
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
   }, []);
 
-  // ➕ Increment attendance
+  // ➕ Increment attendance without showing the number
   const handleClick = async () => {
     if (cooldownRef.current) return;
     cooldownRef.current = true;
 
     try {
-      let newCount = null;
-
       await runTransaction(ref(rtdb, "attendance/count"), (current) => {
-        newCount = (current || 0) + 1;
-        return newCount;
+        return (current || 0) + 1;
       });
 
-      setCount(newCount);
+      // Only show temporary success feedback
       setStatus("success");
     } catch (err) {
       console.error(err);
@@ -110,19 +102,10 @@ export default function Scanner() {
           cursor: "pointer",
         }}
       >
-        {status === "success"
-          ? `✓ COUNT: ${count}`
-          : "CLICK TO CHECK IN"}
+        {status === "success" ? "✓ CHECKED IN" : "CLICK TO CHECK IN"}
       </button>
 
-      {/* Controls */}
-      <div style={{ marginTop: "15px" }}>
-        {!isRunning ? (
-          <button onClick={startCamera}>START CAMERA</button>
-        ) : (
-          <button onClick={stopCamera}>STOP CAMERA</button>
-        )}
-      </div>
+      {/* Removed stop/start camera controls */}
     </div>
   );
 }
